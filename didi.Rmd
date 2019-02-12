@@ -1,0 +1,68 @@
+---
+title: "Fiddling with Didi data"
+output: html_document
+---
+
+```{r setup, include = FALSE}
+library(tidyverse)
+library(leaflet)
+
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.width = 6,
+  fig.asp = 0.618,
+  out.width = "70%",
+  fig.align = "center",
+  fig.show = "hold"
+)
+```
+
+```{r, message = FALSE}
+data_dir <- "data"
+
+gps_data <- read_csv(
+  file = file.path(data_dir, "gps_20161112"),
+  col_names = c("driver_id", "order_id", "time_stamp", "long", "lat")
+)
+order_data <- read_csv(
+  file = file.path(data_dir, "order_20161112"),
+  col_names = c("order_id", "start_time", "stop_time",
+                "start_long", "start_lat", "stop_long", "stop_lat")
+)
+```
+
+```{r}
+# Sanity check: does there exist an order ID associated with multiple driver
+# IDS?
+gps_data %>%
+  group_by(order_id) %>%
+  summarize(n = n_distinct(driver_id)) %>%
+  filter(n > 1)
+```
+
+```{r}
+orders <- split(gps_data, gps_data$order_id)
+```
+
+```{r}
+n_orders <- 20
+orders_small <- orders %>%
+  #.[1:n_orders] %>%
+  sample(n_orders) %>%
+  map(function(df) rbind(df, rep(NA, 5))) %>%
+  bind_rows()
+```
+
+```{r}
+m <- leaflet() %>%
+  addTiles() %>%
+  setView(lng = 104.066, lat = 30.657, zoom = 12) %>%
+  setMaxBounds(
+    lat1 = 30.652828,
+    lng1 = 104.042102,
+    lat2 = 30.727818,
+    lng2 = 104.129591
+  ) %>%
+  addPolylines(data = orders_small, lat = ~lat, lng = ~long)
+m
+```
